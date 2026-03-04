@@ -113,6 +113,41 @@ class OpenAIProvider(EmbeddingProvider):
         return self.get_model().cache_clear()
 
 
+@register_provider("fastembed")
+class FastEmbedProvider(EmbeddingProvider):
+    @lru_cache()
+    def get_dense_model(self, model_name: str):
+        try:
+            from fastembed import TextEmbedding
+        except ImportError:
+            raise ImportError("fastembed not installed. Add it in the pyproject.toml")
+        logger.info(f"Loading FastEmbed dense model: {model_name}")
+        return TextEmbedding(model_name=model_name)
+
+    @lru_cache()
+    def get_sparse_model(self, model_name: str):
+        try:
+            from fastembed import SparseTextEmbedding
+        except ImportError:
+            raise ImportError("fastembed not installed. Add it in the pyproject.toml")
+        logger.info(f"Loading FastEmbed sparse model: {model_name}")
+        return SparseTextEmbedding(model_name=model_name)
+
+    async def dense_embed(self, text: str, model_name: str) -> list[float]:
+        model = self.get_dense_model(model_name)
+        embedding = await asyncio.to_thread(lambda: next(model.embed([text])))
+        return embedding.tolist()
+
+    async def sparse_embed(self, text: str, model_name: str) -> Dict[str, int]:
+        model = self.get_sparse_model(model_name)
+        result = await asyncio.to_thread(lambda: next(model.embed([text])))
+        return {str(int(idx)): int(val) for idx, val in zip(result.indices, result.values)}
+
+    def cleanup_embedding_model(self):
+        self.get_dense_model.cache_clear()
+        self.get_sparse_model.cache_clear()
+
+
 @register_provider("sentence_transformers")
 class SentenceTransformerProvider(EmbeddingProvider):
     @lru_cache()
