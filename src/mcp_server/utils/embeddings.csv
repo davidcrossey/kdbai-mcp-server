@@ -1,3 +1,4 @@
 database,table,embedding_provider,embedding_model,sparse_tokenizer_provider,sparse_tokenizer_model
 default,_example_table1,sentence_transformers,all-MiniLM-L12-v2,sentence_transformers,all-MiniLM-L12-v2
+default,company_data,fastembed,BAAI/bge-small-en-v1.5,fastembed,BAAI/bge-small-en-v1.5
 default,bloomberg_headlines,fastembed,intfloat/multilingual-e5-large,fastembed,intfloat/multilingual-e5-large

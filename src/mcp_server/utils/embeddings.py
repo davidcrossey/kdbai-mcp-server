@@ -133,14 +133,19 @@ class FastEmbedProvider(EmbeddingProvider):
         logger.info(f"Loading FastEmbed sparse model: {model_name}")
         return SparseTextEmbedding(model_name=model_name)
 
+    def _query_text(self, text: str, model_name: str) -> str:
+        if "multilingual-e5" in model_name or model_name.startswith("intfloat/e5"):
+            return f"query: {text}"
+        return text
+
     async def dense_embed(self, text: str, model_name: str) -> list[float]:
         model = self.get_dense_model(model_name)
-        embedding = await asyncio.to_thread(lambda: next(model.embed([text])))
+        embedding = await asyncio.to_thread(lambda: next(model.embed([self._query_text(text, model_name)])))
         return embedding.tolist()
 
     async def sparse_embed(self, text: str, model_name: str) -> Dict[str, int]:
         model = self.get_sparse_model(model_name)
-        result = await asyncio.to_thread(lambda: next(model.embed([text])))
+        result = await asyncio.to_thread(lambda: next(model.embed([self._query_text(text, model_name)])))
         return {str(int(idx)): int(val) for idx, val in zip(result.indices, result.values)}
 
     def cleanup_embedding_model(self):
