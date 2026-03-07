@@ -14,7 +14,7 @@ dependencies = [
     # "sentence_transformers",
     # "openai",
     # "tiktoken",
-    "fastembed",
+    # "fastembed",
 ]
 
 
