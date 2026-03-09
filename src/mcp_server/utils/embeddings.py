@@ -25,7 +25,7 @@ class EmbeddingProvider(ABC):
         self._idle_timer.start()
 
     def _release_on_idle(self):
-        logger.info(f"{self.__class__.__name__}: idle timeout reached, releasing model from memory")
+        logger.info(f"{self.__class__.__name__}: idle timeout reached, releasing model(s) from memory")
         self.cleanup_embedding_model()
 
     async def dense_embed(self, text: str, model_name: str) -> list[float]:
