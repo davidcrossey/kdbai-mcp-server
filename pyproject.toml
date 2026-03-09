@@ -15,6 +15,7 @@ dependencies = [
     # "openai",
     # "tiktoken",
     # "fastembed",
+    # "transformers",
 ]
 
 

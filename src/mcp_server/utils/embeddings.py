@@ -42,7 +42,7 @@ class EmbeddingProvider(ABC):
         self._reset_idle_timer()
         return await self._dense_embed(text, model_name)
 
-    async def sparse_embed(self, text: str, model_name: str) -> Dict[str, int]:
+    async def sparse_embed(self, text: str, model_name: str) -> Dict[int, int]:
         """
         Generate sparse embeddings (token counts) for text using the specified model.
 
@@ -61,7 +61,7 @@ class EmbeddingProvider(ABC):
         pass
 
     @abstractmethod
-    async def _sparse_embed(self, text: str, model_name: str) -> Dict[str, int]:
+    async def _sparse_embed(self, text: str, model_name: str) -> Dict[int, int]:
         pass
 
     def cleanup_embedding_model(self):
@@ -116,7 +116,7 @@ class OpenAIProvider(EmbeddingProvider):
         return embedding
 
     # _sparse_embed implementation
-    async def _sparse_embed(self, text: str, model_name: str) -> Dict[str, int]:
+    async def _sparse_embed(self, text: str, model_name: str) -> Dict[int, int]:
         try:
             import tiktoken
         except ImportError:
@@ -155,11 +155,11 @@ class FastEmbedProvider(EmbeddingProvider):
     @lru_cache()
     def get_sparse_model(self, model_name: str):
         try:
-            from fastembed import SparseTextEmbedding
+            from transformers import BertTokenizerFast
         except ImportError:
-            raise ImportError("fastembed not installed. Add it in the pyproject.toml")
-        logger.info(f"Loading FastEmbed sparse model: {model_name}")
-        return SparseTextEmbedding(model_name=model_name)
+            raise ImportError("transformers not installed. Add it in the pyproject.toml")
+        logger.info(f"Loading BertTokenizerFast sparse model: {model_name}")
+        return BertTokenizerFast.from_pretrained(model_name, local_files_only=True)
 
     def _query_text(self, text: str, model_name: str) -> str:
         if "multilingual-e5" in model_name or model_name.startswith("intfloat/e5"):
@@ -171,10 +171,15 @@ class FastEmbedProvider(EmbeddingProvider):
         embedding = await asyncio.to_thread(lambda: next(model.embed([self._query_text(text, model_name)])))
         return embedding.tolist()
 
-    async def _sparse_embed(self, text: str, model_name: str) -> Dict[str, int]:
-        model = self.get_sparse_model(model_name)
-        result = await asyncio.to_thread(lambda: next(model.embed([self._query_text(text, model_name)])))
-        return {str(int(idx)): int(val) for idx, val in zip(result.indices, result.values)}
+    async def _sparse_embed(self, text: str, model_name: str) -> Dict[int, int]:
+        tokenizer = self.get_sparse_model(model_name)
+
+        def tokenize_and_count():
+            ids = tokenizer(text, add_special_tokens=True)["input_ids"]
+            ids = [i for i in ids if i not in (101, 102)]
+            return {int(k): int(v) for k, v in Counter(ids).items()}
+
+        return await asyncio.to_thread(tokenize_and_count)
 
     def cleanup_embedding_model(self):
         self.get_dense_model.cache_clear()
@@ -202,12 +207,13 @@ class SentenceTransformerProvider(EmbeddingProvider):
         return embedding.tolist()
 
     # _sparse_embed implementation
-    async def _sparse_embed(self, text: str, model_name: str) -> Dict[str, int]:
+    async def _sparse_embed(self, text: str, model_name: str) -> Dict[int, int]:
         def tokenize_and_count():
             if hasattr(model, 'tokenizer') and model.tokenizer is not None:
                 tokens = model.tokenizer.tokenize(text)
                 token_ids = model.tokenizer.convert_tokens_to_ids(tokens)
                 return dict(Counter(token_ids))
+            return {}
         model = self.get_model(model_name)
         token_counts = await asyncio.to_thread(tokenize_and_count)
         return token_counts
