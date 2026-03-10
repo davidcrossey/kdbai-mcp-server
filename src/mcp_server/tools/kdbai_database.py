@@ -2,6 +2,7 @@ import logging
 from typing import Optional, Dict, Any
 from mcp_server.utils.kdbai import get_kdbai_client
 from mcp_server.server import app_settings
+from mcp_server.stats import tracker, track_size
 
 db_config = app_settings.db
 logger = logging.getLogger(__name__)
@@ -40,6 +41,7 @@ async def kdbai_databases_info_impl(database: Optional[str] = None) -> Dict[str,
 
 def register_tools(mcp_server):
     @mcp_server.tool()
+    @track_size(tracker, "kdbai_list_databases")
     async def kdbai_list_databases() -> Dict[str, Any]:
         """
         List all databases name in the KDB.AI database.
@@ -52,6 +54,7 @@ def register_tools(mcp_server):
         return await kdbai_list_databases_impl()
 
     @mcp_server.tool()
+    @track_size(tracker, "kdbai_database_info")
     async def kdbai_database_info(database: Optional[str] = "default") -> Dict[str, Any]:
         """
         Get KDBAI database information. Database information also includes tables information for each table in the database.
@@ -70,6 +73,7 @@ def register_tools(mcp_server):
         return info
 
     @mcp_server.tool()
+    @track_size(tracker, "kdbai_all_databases_info")
     async def kdbai_all_databases_info() -> Dict[str, Any]:
         """
         Get information of all databases in KDBAI database. Each database entry includes tables information of each table in that database.

@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, Any
 from mcp_server.utils.kdbai import get_kdbai_client
+from mcp_server.stats import tracker, track_size
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ async def kdbai_process_info_impl() -> Dict[str, Any]:
 
 def register_tools(mcp_server):
     @mcp_server.tool()
+    @track_size(tracker, "kdbai_session_info")
     async def kdbai_session_info() -> str:
         """
         Get session information from KDB.AI.
@@ -48,6 +50,7 @@ def register_tools(mcp_server):
         return str(info)
 
     @mcp_server.tool()
+    @track_size(tracker, "kdbai_system_info")
     async def kdbai_system_info() -> str:
         """
         Get system information from KDB.AI.
@@ -59,6 +62,7 @@ def register_tools(mcp_server):
         return str(info)
 
     @mcp_server.tool()
+    @track_size(tracker, "kdbai_process_info")
     async def kdbai_process_info() -> str:
         """
         Get process information from KDB.AI.

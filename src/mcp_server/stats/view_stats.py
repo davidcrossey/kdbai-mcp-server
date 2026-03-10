@@ -7,8 +7,6 @@ Usage: python view_stats.py [--since YYYY-MM-DD] [--tool TOOL_NAME]
 import json
 import argparse
 from pathlib import Path
-from datetime import datetime
-from mcp_size_tracker import SizeTracker
 
 def format_mb(mb):
     """Format MB size"""
