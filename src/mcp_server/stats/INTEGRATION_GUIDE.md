@@ -11,7 +11,7 @@ import json
 
 # Initialize
 mcp = FastMCP("KDB AI")
-tracker = SizeTracker("kdbai_size_log.json")
+tracker = SizeTracker("kdbai_mcp_size_log.json")
 
 # Wrap your existing tools
 @mcp.tool()

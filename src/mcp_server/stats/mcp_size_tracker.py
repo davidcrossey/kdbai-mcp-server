@@ -10,9 +10,9 @@ from pathlib import Path
 import logging
 
 class SizeTracker:
-    def __init__(self, log_file="mcp_size_log.json"):
+    def __init__(self, log_file="kdbai_mcp_size_log.json"):
         self.log_file = Path(log_file)
-        self.logger = logging.getLogger("mcp_size_tracker")
+        self.logger = logging.getLogger("kdbai_mcp_size_tracker")
         
     def get_size_mb(self, data):
         """Calculate size of data in MB"""
@@ -144,7 +144,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp_size_tracker import SizeTracker, track_size
 
 mcp = FastMCP("KDB AI")
-tracker = SizeTracker("kdbai_size_log.json")
+tracker = SizeTracker("kdbai_mcp_size_log.json")
 
 @mcp.tool()
 @track_size(tracker, "kdbai_query_data")
