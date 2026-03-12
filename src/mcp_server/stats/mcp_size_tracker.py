@@ -19,7 +19,7 @@ class SizeTracker:
         if isinstance(data, str):
             size_bytes = len(data.encode('utf-8'))
         elif isinstance(data, (dict, list)):
-            size_bytes = len(json.dumps(data).encode('utf-8'))
+            size_bytes = len(json.dumps(data, default=str).encode('utf-8'))
         else:
             size_bytes = sys.getsizeof(data)
         return size_bytes / (1024 * 1024)  # Convert to MB
