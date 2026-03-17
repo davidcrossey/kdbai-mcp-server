@@ -2,16 +2,32 @@
 
 import asyncio
 import logging
-from typing import Dict, Type
+import threading
+from typing import Dict, Optional, Type
 from collections import Counter
 from functools import lru_cache
 from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 
+_IDLE_TIMEOUT_SECONDS = 300  # Release model from memory after 5 minutes of inactivity
+
 # ---- Base Embedding Provider Interface ----
 class EmbeddingProvider(ABC):
-    @abstractmethod
+    def __init__(self):
+        self._idle_timer: Optional[threading.Timer] = None
+
+    def _reset_idle_timer(self):
+        if self._idle_timer is not None:
+            self._idle_timer.cancel()
+        self._idle_timer = threading.Timer(_IDLE_TIMEOUT_SECONDS, self._release_on_idle)
+        self._idle_timer.daemon = True
+        self._idle_timer.start()
+
+    def _release_on_idle(self):
+        logger.info(f"{self.__class__.__name__}: idle timeout reached, releasing model(s) from memory")
+        self.cleanup_embedding_model()
+
     async def dense_embed(self, text: str, model_name: str) -> list[float]:
         """
         Encode text using the specified model.
@@ -23,11 +39,10 @@ class EmbeddingProvider(ABC):
         Returns:
            List[float]: Text embedding as a list of floats
         """
+        self._reset_idle_timer()
+        return await self._dense_embed(text, model_name)
 
-        pass
-
-    @abstractmethod
-    async def sparse_embed(self, text: str, model_name: str) -> Dict[str, int]:
+    async def sparse_embed(self, text: str, model_name: str) -> Dict[int, int]:
         """
         Generate sparse embeddings (token counts) for text using the specified model.
 
@@ -38,6 +53,15 @@ class EmbeddingProvider(ABC):
         Returns:
            Dict[str, int]: Dictionary mapping token IDs to their counts
         """
+        self._reset_idle_timer()
+        return await self._sparse_embed(text, model_name)
+
+    @abstractmethod
+    async def _dense_embed(self, text: str, model_name: str) -> list[float]:
+        pass
+
+    @abstractmethod
+    async def _sparse_embed(self, text: str, model_name: str) -> Dict[int, int]:
         pass
 
     def cleanup_embedding_model(self):
@@ -54,11 +78,15 @@ def register_provider(name: str):
     return wrapper
 
 # ---- Provider Factory ----
+_PROVIDER_INSTANCES: Dict[str, EmbeddingProvider] = {}
+
 def get_provider(name: str) -> EmbeddingProvider:
-    cls = PROVIDER_REGISTRY.get(name)
-    if not cls:
-        raise ValueError(f"Unknown provider: {name}")
-    return cls()
+    if name not in _PROVIDER_INSTANCES:
+        cls = PROVIDER_REGISTRY.get(name)
+        if not cls:
+            raise ValueError(f"Unknown provider: {name}")
+        _PROVIDER_INSTANCES[name] = cls()
+    return _PROVIDER_INSTANCES[name]
 
 
 
@@ -77,8 +105,8 @@ class OpenAIProvider(EmbeddingProvider):
         logger.info(f"Setting up OpenAI client")
         return AsyncOpenAI()  # User should configure API key via environment
 
-    # dense_embed implementation
-    async def dense_embed(self, text: str, model_name: str) -> list[float]:
+    # _dense_embed implementation
+    async def _dense_embed(self, text: str, model_name: str) -> list[float]:
         model = self.get_model()
         embedding = (await model.embeddings.create(
                 model=model_name,
@@ -87,8 +115,8 @@ class OpenAIProvider(EmbeddingProvider):
 
         return embedding
 
-    # sparse_embed implementation
-    async def sparse_embed(self, text: str, model_name: str) -> Dict[str, int]:
+    # _sparse_embed implementation
+    async def _sparse_embed(self, text: str, model_name: str) -> Dict[int, int]:
         try:
             import tiktoken
         except ImportError:
@@ -110,7 +138,7 @@ class OpenAIProvider(EmbeddingProvider):
 
     # override cleanup function for lru_cache usage
     def cleanup_embedding_model(self):
-        return self.get_model().cache_clear()
+        self.get_model.cache_clear()
 
 
 @register_provider("sentence_transformers")
@@ -127,24 +155,25 @@ class SentenceTransformerProvider(EmbeddingProvider):
         kwargs = {}
         return SentenceTransformer(model_name, **kwargs)
 
-    # dense_embed implementation
-    async def dense_embed(self, text: str, model_name: str) -> list[float]:
+    # _dense_embed implementation
+    async def _dense_embed(self, text: str, model_name: str) -> list[float]:
         model = self.get_model(model_name)
         embedding = await asyncio.to_thread(model.encode, text)
         return embedding.tolist()
 
-    # sparse_embed implementation
-    async def sparse_embed(self, text: str, model_name: str) -> Dict[str, int]:
+    # _sparse_embed implementation
+    async def _sparse_embed(self, text: str, model_name: str) -> Dict[int, int]:
         def tokenize_and_count():
             if hasattr(model, 'tokenizer') and model.tokenizer is not None:
                 tokens = model.tokenizer.tokenize(text)
                 token_ids = model.tokenizer.convert_tokens_to_ids(tokens)
                 return dict(Counter(token_ids))
+            return {}
         model = self.get_model(model_name)
         token_counts = await asyncio.to_thread(tokenize_and_count)
         return token_counts
 
     # override cleanup function for lru_cache usage
     def cleanup_embedding_model(self):
-        return self.get_model().cache_clear()
+        self.get_model.cache_clear()
 
