@@ -141,6 +141,51 @@ class OpenAIProvider(EmbeddingProvider):
         self.get_model.cache_clear()
 
 
+@register_provider("fastembed")
+class FastEmbedProvider(EmbeddingProvider):
+    @lru_cache()
+    def get_dense_model(self, model_name: str):
+        try:
+            from fastembed import TextEmbedding
+        except ImportError:
+            raise ImportError("fastembed not installed. Add it in the pyproject.toml")
+        logger.info(f"Loading FastEmbed dense model: {model_name}")
+        return TextEmbedding(model_name=model_name)
+
+    @lru_cache()
+    def get_sparse_model(self, model_name: str):
+        try:
+            from transformers import BertTokenizerFast
+        except ImportError:
+            raise ImportError("transformers not installed. Add it in the pyproject.toml")
+        logger.info(f"Loading BertTokenizerFast sparse model: {model_name}")
+        return BertTokenizerFast.from_pretrained(model_name, local_files_only=True)
+
+    def _query_text(self, text: str, model_name: str) -> str:
+        if "multilingual-e5" in model_name or model_name.startswith("intfloat/e5"):
+            return f"query: {text}"
+        return text
+
+    async def _dense_embed(self, text: str, model_name: str) -> list[float]:
+        model = self.get_dense_model(model_name)
+        embedding = await asyncio.to_thread(lambda: next(model.embed([self._query_text(text, model_name)])))
+        return embedding.tolist()
+
+    async def _sparse_embed(self, text: str, model_name: str) -> Dict[int, int]:
+        tokenizer = self.get_sparse_model(model_name)
+
+        def tokenize_and_count():
+            ids = tokenizer(text, add_special_tokens=True)["input_ids"]
+            ids = [i for i in ids if i not in (101, 102)]
+            return {int(k): int(v) for k, v in Counter(ids).items()}
+
+        return await asyncio.to_thread(tokenize_and_count)
+
+    def cleanup_embedding_model(self):
+        self.get_dense_model.cache_clear()
+        self.get_sparse_model.cache_clear()
+
+
 @register_provider("sentence_transformers")
 class SentenceTransformerProvider(EmbeddingProvider):
     @lru_cache()
