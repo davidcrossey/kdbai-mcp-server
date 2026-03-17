@@ -2,6 +2,7 @@ import logging
 from typing import Optional, Dict, Any, List
 from mcp_server.utils.kdbai import get_kdbai_client, get_table
 from mcp_server.server import app_settings
+from mcp_server.stats import tracker, track_size
 
 db_config = app_settings.db
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ async def kdbai_table_info_impl(table_name: str, database_name: Optional[str] = 
 
 def register_tools(mcp_server):
     @mcp_server.tool()
+    @track_size(tracker, "kdbai_list_tables")
     async def kdbai_list_tables(database_name: Optional[str] = None) -> Dict[str, Any]:
         """
         List all tables in the given database.
@@ -66,6 +68,7 @@ def register_tools(mcp_server):
         return await list_tables_impl(database_name)
 
     @mcp_server.tool()
+    @track_size(tracker, "kdbai_table_info")
     async def kdbai_table_info(table_name: str, database_name: Optional[str] = None) -> Dict[str, Any]:
         """
         Get comprehensive information about a table including schema and statistics.

@@ -5,6 +5,7 @@ from mcp_server.utils.embeddings_helpers import get_embedding_config
 from mcp_server.utils.kdbai import get_table
 from mcp_server.utils.filters import parse_temporal_filters
 from mcp_server.server import app_settings
+from mcp_server.stats import tracker, track_size
 import numpy as np
 import pandas as pd
 
@@ -188,6 +189,7 @@ async def kdbai_hybrid_search_impl(table_name: str,
 
 def register_tools(mcp_server):
     @mcp_server.tool()
+    @track_size(tracker, "kdbai_query_data")
     async def kdbai_query_data(table_name: str,
                                 database_name: Optional[str] = None,
                                 filters: Optional[List[tuple]] = None,
@@ -229,6 +231,7 @@ def register_tools(mcp_server):
         return results
 
     @mcp_server.tool()
+    @track_size(tracker, "kdbai_similarity_search")
     async def kdbai_similarity_search(table_name: str,
                             query: str,
                             vector_index_name: str,
@@ -276,6 +279,7 @@ def register_tools(mcp_server):
         return results
 
     @mcp_server.tool()
+    @track_size(tracker, "kdbai_hybrid_search")
     async def kdbai_hybrid_search(table_name: str,
                                     query: str,
                                     vector_index_name: str,
