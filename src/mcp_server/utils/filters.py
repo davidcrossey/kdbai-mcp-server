@@ -56,7 +56,7 @@ def cast_temporal_value(col, val, schema):
     # Create a mapping from column name to column type
     type_map = {col["name"]: col["type"] for col in schema}
     # Known datetime-like types
-    datetime_types = {"datetime", "datetime64[ns]", "date", "time"}
+    datetime_types = {"datetime", "datetime64[ns]", "datetime64[D]", "date", "time"}
     if col is None:
         field_type = "datetime64[ns]" # default type
     else:
@@ -65,7 +65,7 @@ def cast_temporal_value(col, val, schema):
     if field_type in datetime_types:
         if field_type in {"datetime", "datetime64[ns]"}:
             result = datetime.fromisoformat(val.replace("Z", "+00:00"))
-        elif field_type == "date":
+        elif field_type in {"date", "datetime64[D]"}:
             result = date.fromisoformat(val.split("T")[0])
         elif field_type == "time":
             result = time.fromisoformat(val.split("T")[1])
