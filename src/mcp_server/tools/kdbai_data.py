@@ -259,14 +259,17 @@ def register_tools(mcp_server):
         Args:
             database_name: Name of the database containing the table.
             table_name: Name of the table to query
-            filters: List of filter conditions as q/kdb+ parse tree (operator, column, value). E.g. [("=", "col", "val")]
-            sort_columns: List of column names to sort by.
-            group_by: List of column names to group by.
-            aggs: Dict of aggregation rules e.g. {"total": ["sum", "amount"]}. Supports KDB+ agg functions.
-            limit: Maximum number of rows to return.
+            filters: List of filter conditions as q/kdb+ parse tree (operator, filter column name, value)
+            Examples:
+                - Simple equality: ("=", "filter_column_name", "value")
+                - Logical AND: [("<", "filter_column_name_1", "value"), (">", "filter_column_name_2", "value")]
+            sort_columns: List of column names to sort by, e.g. '["price", "date"]'
+            group_by: List of column names to group by, e.g. '["category"]'
+            aggs: Dictionary of aggregation rules, e.g. '{"total": ["sum", "amount"]}'. It can use any KDB+ supported aggregation function like avg, max, sum etc.
+            limit: String representation of maximum number of rows to return, e.g. "10"
 
         Returns:
-            Dictionary containing query results or error message.
+            Dictionary containing query results or error message
 
         """
         results = await kdbai_query_data_impl(
@@ -299,12 +302,18 @@ def register_tools(mcp_server):
             table_name: Name of the table to search
             query: Text query to convert to vector and search
             vector_index_name: Name of the vector index to search against
-            database_name: Name of the database
-            n: Number of results to return
-            filters: List of filter conditions as q/kdb+ parse tree (operator, column, value). E.g. [("=", "col", "val")]
-            sort_columns: List of column names to sort by.
-            group_by: List of column names to group by.
-            aggs: Dict of aggregation rules e.g. {"total": ["sum", "amount"]}. Supports KDB+ agg functions.
+            embeddings_provider: Embedding provider ('sentence_transformers', 'openai', etc.)
+            embeddings_model: Specific embedding model to use
+            database (Optional[str], optional): Name of the database
+            n (Optional[int], optional): Number of results to return
+            filters (Optional[List[tuple]], optional): List of filter conditions as q/kdb+ parse tree (operator, filter column name, value).
+                - Filters Examples:
+                 - Simple equality: ("=", "filter_column_name", "value")
+                 - Logical AND: [("<", "filter_column_name_1", "value"), (">", "filter_column_name_2", "value")]
+            sort_columns: List of column names to sort by, e.g. '["price", "date"]'
+            group_by: List of column names to group by, e.g. '["category"]'
+            aggs: Dictionary of aggregation rules, e.g. '{"total": ["sum", "amount"]}'. It can use any KDB+ supported aggregation function like avg, max, sum etc.
+            limit: String representation of maximum number of rows to return, e.g. "10"
 
         Returns:
             Dictionary containing search result.
@@ -340,15 +349,22 @@ def register_tools(mcp_server):
 
         Args:
             table_name: Name of the table to search
-            query: Text query for both vector and sparse search
+            query: Text query for both vector and text or sparse search
             vector_index_name: Name of the vector index for similarity search
             sparse_index_name: Name of the sparse index for text search
-            database_name: Name of the database
-            n: Number of results to return
-            filters: List of filter conditions as q/kdb+ parse tree (operator, column, value). E.g. [("=", "col", "val")]
-            sort_columns: List of column names to sort by.
-            group_by: List of column names to group by.
-            aggs: Dict of aggregation rules e.g. {"total": ["sum", "amount"]}. Supports KDB+ agg functions.
+            embeddings_provider: Embedding provider ('sentence_transformers', 'openai', etc.)
+            embeddings_model: Specific embedding model to use
+            sparse_tokenizer_provider: Tokenizer provider ('sentence_transformers', 'openai', etc.)
+            sparse_tokenizer_model: Specific tokenizer model to use            
+            database (Optional[str], optional): Name of the database
+            n (Optional[int], optional): Number of results to return
+            filters (Optional[List[tuple]], optional): List of filter conditions as q/kdb+ parse tree (operator, filter column name, value).
+                - Filters Examples:
+                 - Simple equality: ("=", "filter_column_name", "value")
+                 - Logical AND: [("<", "filter_column_name_1", "value"), (">", "filter_column_name_2", "value")]
+            sort_columns: List of column names to sort by, e.g. '["price", "date"]'
+            group_by: List of column names to group by, e.g. '["category"]'
+            aggs: Dictionary of aggregation rules, e.g. '{"total": ["sum", "amount"]}'. It can use any KDB+ supported aggregation function like avg, max, sum etc.
 
         Returns:
             Dictionary containing hybrid search result.
@@ -389,10 +405,13 @@ def register_tools(mcp_server):
             sparse_index_name: Name of the sparse index to search against
             database_name: Name of the database containing the table
             n: Number of results to return
-            filters: List of filter conditions as q/kdb+ parse tree (operator, column, value). E.g. [("=", "col", "val")]
-            sort_columns: List of column names to sort by.
-            group_by: List of column names to group by.
-            aggs: Dict of aggregation rules e.g. {"total": ["sum", "amount"]}. Supports KDB+ agg functions.
+            filters: List of filter conditions as q/kdb+ parse tree (operator, filter column name, value).
+                Examples:
+                 - Simple equality: ("=", "filter_column_name", "value")
+                 - Logical AND: [("<", "filter_column_name_1", "value"), (">", "filter_column_name_2", "value")]
+            sort_columns: List of column names to sort by, e.g. '["price", "date"]'
+            group_by: List of column names to group by, e.g. '["category"]'
+            aggs: Dictionary of aggregation rules, e.g. '{"total": ["sum", "amount"]}'. It can use any KDB+ supported aggregation function like avg, max, sum etc.
 
         Returns:
             Dictionary containing sparse search results or error message.
